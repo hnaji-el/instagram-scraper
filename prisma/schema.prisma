@@ -14,8 +14,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+enum AccountStatus {
+  NotLogged
+  Logged
+  NotExist
+  WrongPassword
+  TwoFactorAuthFailed
+  Blocked
+  VerificationRequired
+}
+
+enum ProxyStatus {
+  NotUsed
+  Used
+  Invalid
+}
+
+model Account {
+  id                  String @id @default(uuid())
+  username            String @unique
+  password            String
+  twoFactorAuthSecret String
+  status              AccountStatus @default(NotLogged)
+
+  proxy               Proxy?     @relation(fields: [proxyId], references: [id], onDelete: Cascade)
+  proxyId             String?    @unique
+}
+
+model Proxy {
+  id       String @id @default(uuid())
+  proxyUrl String @unique
+  status   ProxyStatus @default(NotUsed)
+
+  account  Account?
+}
+
+model Campaign {
+  id   String @id @default(uuid())
+  name String @unique
+  data Json // { unsername: string, id: string }[]
 }
