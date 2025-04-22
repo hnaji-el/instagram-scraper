@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -37,8 +37,8 @@ model Account {
   twoFactorAuthSecret String
   status              AccountStatus @default(NotLogged)
 
-  proxy               Proxy?     @relation(fields: [proxyId], references: [id], onDelete: Cascade)
   proxyId             String?    @unique
+  proxy               Proxy?     @relation(fields: [proxyId], references: [id], onDelete: Cascade)
 }
 
 model Proxy {

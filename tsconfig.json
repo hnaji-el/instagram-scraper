@@ -2,7 +2,13 @@
   "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./"
+    "rootDir": "./",
+    "target": "es6",
+    "strict": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "types": ["@prisma/client"]
   },
   "include": ["src/**/*"],
   "exclude": ["dist"]
