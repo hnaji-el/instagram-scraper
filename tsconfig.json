@@ -3,11 +3,11 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./",
-    "target": "es6",
+    "target": "ES2017",
     "strict": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
-    "module": "commonjs",
+    "module": "esnext",
     "types": ["@prisma/client"]
   },
   "include": ["src/**/*"],

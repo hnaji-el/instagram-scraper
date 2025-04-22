@@ -1,5 +1,8 @@
-import express from "express";
-import { PrismaClient } from "@prisma/client";
+import express, { Request, Response } from "express";
+import { PrismaClient, AccountStatus, ProxyStatus } from "@prisma/client";
+
+import { loadAccountsFromFile } from "./loadAccountsFromFile";
+import { loadProxiesFromFile } from "./loadProxiesFromFile";
 
 const app = express();
 app.use(express.json());
@@ -9,7 +12,15 @@ const prisma = new PrismaClient();
 const port = process.env.PORT ?? "3000";
 const domain = process.env.DOMAIN ?? "";
 
-app.patch("/accounts/:id", async (req, res) => {
+interface UpdateAccountBody {
+  status?: AccountStatus;
+  proxyId?: string;
+}
+
+const updateAccountHandler = async (
+  req: Request<{ id: string }, unknown, UpdateAccountBody>,
+  res: Response,
+) => {
   const { id } = req.params;
   const { status, proxyId } = req.body;
 
@@ -17,6 +28,11 @@ app.patch("/accounts/:id", async (req, res) => {
     res.status(400).json({
       error: "Provide at least one of 'status' or 'proxyId' to update",
     });
+    return;
+  }
+
+  if (status && !Object.values(AccountStatus).includes(status)) {
+    res.status(400).json({ error: "Status is not valid" });
     return;
   }
 
@@ -36,14 +52,17 @@ app.patch("/accounts/:id", async (req, res) => {
       error: "An error occurred while updating the account",
     });
   }
-});
+};
 
-app.patch("/proxies/:id", async (req, res) => {
+const updateProxyHandler = async (
+  req: Request<{ id: string }, unknown, { status: ProxyStatus }>,
+  res: Response,
+) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  if (!status) {
-    res.status(400).json({ error: "Status is required" });
+  if (!Object.values(ProxyStatus).includes(status)) {
+    res.status(400).json({ error: "Status is not valid" });
     return;
   }
 
@@ -56,14 +75,22 @@ app.patch("/proxies/:id", async (req, res) => {
     res.json(updatedProxy);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Failed to update proxy" });
+    res
+      .status(500)
+      .json({ error: "An error occurred while updating the proxy" });
   }
-});
+};
+
+app.patch("/accounts/:id", updateAccountHandler);
+app.patch("/proxies/:id", updateProxyHandler);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
   console.log("Response sent");
 });
+
+await loadAccountsFromFile();
+await loadProxiesFromFile();
 
 app.listen(port, () => {
   console.log(`Server is running on ${domain}:${port}`);

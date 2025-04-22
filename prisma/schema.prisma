@@ -33,6 +33,7 @@ enum ProxyStatus {
 model Account {
   id                  String @id @default(uuid())
   username            String @unique
+  email               String
   password            String
   twoFactorAuthSecret String
   status              AccountStatus @default(NotLogged)
