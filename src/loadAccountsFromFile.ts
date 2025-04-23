@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -51,9 +52,9 @@ export async function loadAccountsFromFile() {
         data: newAccounts,
       });
 
-      console.log(`Created ${newAccounts.length.toString()} new account(s).`);
+      console.log(`Created ${newAccounts.length.toString()} new account(s)`);
     } else {
-      console.log("No new accounts to create.");
+      console.log("No new accounts to create");
     }
   } catch (error) {
     console.error("Failed to load accounts:", error);
