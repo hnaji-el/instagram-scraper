@@ -24,12 +24,6 @@ enum AccountStatus {
   VerificationRequired
 }
 
-enum ProxyStatus {
-  NotUsed
-  Used
-  Invalid
-}
-
 model Account {
   id                  String @id @default(uuid())
   username            String @unique
@@ -37,17 +31,18 @@ model Account {
   password            String
   twoFactorAuthSecret String
   status              AccountStatus @default(NotLogged)
+  sessionData         Json?
 
   proxyId             String?    @unique
   proxy               Proxy?     @relation(fields: [proxyId], references: [id], onDelete: Cascade)
 }
 
 model Proxy {
-  id       String @id @default(uuid())
-  proxyUrl String @unique
-  status   ProxyStatus @default(NotUsed)
+  id        String @id @default(uuid())
+  proxyUrl  String @unique
+  proxyPort Int @unique
 
-  account  Account?
+  account   Account?
 }
 
 model Campaign {

@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { spawn } from "child_process";
 import path from "path";
 
-import { PrismaClient, AccountStatus, ProxyStatus } from "@prisma/client";
+import { PrismaClient, AccountStatus, Prisma } from "@prisma/client";
 
 import { loadAccountsFromFile } from "./loadAccountsFromFile";
 
@@ -16,6 +16,7 @@ const domain = process.env.DOMAIN ?? "";
 
 interface UpdateAccountBody {
   status?: AccountStatus;
+  sessionData?: Prisma.JsonValue;
   proxyId?: string;
 }
 
@@ -24,9 +25,9 @@ const updateAccountHandler = async (
   res: Response,
 ) => {
   const { id } = req.params;
-  const { status, proxyId } = req.body;
+  const { status, sessionData, proxyId } = req.body;
 
-  if (!status && !proxyId) {
+  if (!status && !sessionData && !proxyId) {
     res.status(400).json({
       error: "Provide at least one of 'status' or 'proxyId' to update",
     });
@@ -43,6 +44,7 @@ const updateAccountHandler = async (
       where: { id },
       data: {
         ...(status && { status }),
+        ...(sessionData && { sessionData }),
         ...(proxyId && { proxyId }),
       },
     });
@@ -53,33 +55,6 @@ const updateAccountHandler = async (
     res.status(500).json({
       error: "An error occurred while updating the account",
     });
-  }
-};
-
-const updateProxyHandler = async (
-  req: Request<{ id: string }, unknown, { status: ProxyStatus }>,
-  res: Response,
-) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  if (!Object.values(ProxyStatus).includes(status)) {
-    res.status(400).json({ error: "status is not valid" });
-    return;
-  }
-
-  try {
-    const updatedProxy = await prisma.proxy.update({
-      where: { id },
-      data: { status },
-    });
-
-    res.json(updatedProxy);
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while updating the proxy" });
   }
 };
 
@@ -96,7 +71,7 @@ const createCampaign = (
   const { campaignName, targets, type } = req.body;
   const scriptPath = path.resolve(
     path.dirname(new URL(import.meta.url).pathname),
-    "../instagram-scraper/main.py",
+    "../instagram-login-and-scraper/scraper/main.py",
   );
 
   const scraper = spawn("python3", [
@@ -131,14 +106,36 @@ const createCampaign = (
   });
 };
 
-app.post("/campaigns", createCampaign);
-app.patch("/accounts/:id", updateAccountHandler);
-app.patch("/proxies/:id", updateProxyHandler);
+const getActiveAccountsHandler = async (req: Request, res: Response) => {
+  try {
+    const accounts = await prisma.account.findMany({
+      where: {
+        status: {
+          notIn: [
+            AccountStatus.NotExist,
+            AccountStatus.WrongPassword,
+            AccountStatus.TwoFactorAuthFailed,
+          ],
+        },
+      },
+    });
+    res.json(accounts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "An error occurred while fetching active accounts",
+    });
+  }
+};
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-  console.log("Response sent");
-});
+// Campaign
+app.post("/campaigns", createCampaign);
+// Account
+// app.get("/accounts", createAccounts); // TODO:
+app.patch("/accounts/:id", updateAccountHandler);
+app.get("/accounts/active", getActiveAccountsHandler);
+// Proxy
+// app.get("/proxy", createProxy); // TODO:
 
 await loadAccountsFromFile();
 

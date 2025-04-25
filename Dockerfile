@@ -8,9 +8,9 @@ RUN python3 -m venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY ./instagram-scraper/requirements.txt ./instagram-scraper/
+COPY ./instagram-login-and-scraper/requirements.txt ./instagram-login-and-scraper/
 
-RUN pip install --no-cache-dir -r instagram-scraper/requirements.txt
+RUN pip install --no-cache-dir -r instagram-login-and-scraper/requirements.txt
 
 EXPOSE 3000
 EXPOSE 5555

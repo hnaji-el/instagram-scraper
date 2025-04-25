@@ -4,27 +4,20 @@ import pyotp
 import os
 import sys
 import json
+from check_arguments import check_arguments
+from fetch_and_filter_accounts import fetch_and_filter_accounts
 
-if len(sys.argv) == 4:
-    campaign_name = sys.argv[1]
-    targets_json = sys.argv[2]
-    scrape_type = sys.argv[3]
+campaign_name, targets, scrape_type = check_arguments()
 
-    try:
-        targets = json.loads(targets_json)
-    except json.JSONDecodeError:
-        print(f"Error: Invalid JSON format for targets argument: {targets_json}")
-        sys.exit(1)
+logged_accounts, not_logged_accounts = fetch_and_filter_accounts("http://localhost:3000/accounts/active")
 
-    print(f"Received Campaign Name: {campaign_name}")
-    print(f"Received Targets: {targets}")
-    print(f"Received Type: {scrape_type}")
-    sys.exit(0)
-else:
-    print("Error: Incorrect number of arguments provided")
-    print(f"Expected 4 arguments, but received {len(sys.argv)}.")
-    print("Usage: python3 <scriptPath> <campaignName> <targetsJsonString> <type>")
-    sys.exit(1)
+
+# login step: NotLogged
+# verification step: Blocked | VerificationRequired
+# ... (rest of your existing code) ...
+
+# login step: NotLogged
+# verification step: Blocked | VerificationRequired
 
 # Specify the folder for session files
 # session_folder = "sessions"
