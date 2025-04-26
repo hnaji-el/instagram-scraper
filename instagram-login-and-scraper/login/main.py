@@ -2,9 +2,10 @@ import sys
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-import os
 import instaloader
 import pyotp
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 API_BASE_URL = "http://localhost:3000"
 # --- DataImpulse Configuration ---
@@ -54,9 +55,9 @@ def fetch_new_dataimpulse_proxy():
             # Split the string: "socks5://user:pass@host:port" -> ["socks5://user:pass@host", "port"]
             try:
                 url_part, port_part = proxy_string.rsplit(':', 1)
-                new_port = int(port_part)
-                print(f"Successfully fetched and parsed new proxy: URL={url_part}, Port={new_port}")
-                return url_part, new_port
+                port = int(port_part)
+                print(f"Successfully fetched and parsed new proxy: PROXY_URL={url_part}, PROXY_PORT={port}")
+                return port, url_part
             except (ValueError, IndexError) as parse_error:
                 print(f"DataImpulse API Error: Failed to parse proxy string '{proxy_string}': {parse_error}", file=sys.stderr)
                 return None, None
@@ -69,39 +70,175 @@ def fetch_new_dataimpulse_proxy():
         return None, None
 
 def get_proxy_details():
-    print(f"Fetching max proxy details from {API_BASE_URL}/proxies/max-port...")
+    print(f"Fetching proxy with the max port from {API_BASE_URL}/proxies/max-port...")
     try:
         response = requests.get(f"{API_BASE_URL}/proxies/max-port", timeout=10)
         response.raise_for_status()
         data = response.json()
 
         max_proxy_port = data.get('maxProxyPort')
-        proxy_url = data.get('proxyUrl')
+        proxy_url_raw = data.get('proxyUrl')
+
+        proxy_url = None
+        if proxy_url_raw:
+            proxy_url = proxy_url_raw.rsplit(':', 1)[0]
 
         if max_proxy_port is not None and proxy_url is not None:
             print(f"Successfully fetched existing max proxy details: Port={max_proxy_port}, URL={proxy_url}")
             return True, max_proxy_port + 1, proxy_url
         elif max_proxy_port is None and proxy_url is None:
             print("No proxies found locally. Attempting to fetch from DataImpulse...")
-            new_url, new_port = fetch_new_dataimpulse_proxy()
-            if new_url is not None and new_port is not None:
-                return True, new_port, new_url
+            proxy_port_, proxy_url_ = fetch_new_dataimpulse_proxy()
+            if proxy_port_ is not None and proxy_url_ is not None:
+                return True, proxy_port_, proxy_url_
             else:
                 print("Failed to obtain a new proxy from DataImpulse.", file=sys.stderr)
                 return False, None, None
         else:
-             return False, None, None # Treat inconsistent data as failure
+            print(f"Warning: Inconsistent proxy details received from local API. PORT={max_proxy_port}, PROXY_URL={proxy_url_raw}", file=sys.stderr)
+            return False, None, None
     except requests.exceptions.RequestException as e:
-        print(f"Local API Error: Failed to fetch max proxy details: {e}", file=sys.stderr)
+        print(f"API Error: Failed to fetch max proxy details: {e}", file=sys.stderr)
         return False, None, None
     except json.JSONDecodeError:
-        print("Local API Error: Failed to decode JSON response for max proxy details.", file=sys.stderr)
+        print("API Error: Failed to decode JSON response for max proxy details.", file=sys.stderr)
         return False, None, None
     except KeyError as e:
-        print(f"Local API Error: Key '{e}' not found in the response.", file=sys.stderr)
+        print(f"API Error: Key '{e}' not found in the response.", file=sys.stderr)
         return False, None, None
 
-# Main execution part
+def create_proxy_record(proxy_url, proxy_port):
+    payload = {"proxyUrl": proxy_url, "proxyPort": proxy_port}
+
+    try:
+        response = requests.post(f"{API_BASE_URL}/proxy", json=payload, timeout=10)
+        if response.status_code == 409:
+             print(f"Proxy {proxy_url} already exists (Conflict 409).")
+             return None
+        response.raise_for_status()
+        proxy_data = response.json()
+
+        proxy_id = proxy_data.get('id')
+        print(f"Successfully created proxy record with ID: {proxy_id}")
+        return proxy_id
+    except requests.exceptions.RequestException as e:
+        print(f"API Error creating proxy record: {e}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError:
+        print("API Error: Failed to decode JSON response when creating proxy.", file=sys.stderr)
+        return None
+
+def update_account_record(account_id, status, proxy_id=None, session_data=None):
+    payload = {"status": status}
+
+    if proxy_id:
+        payload["proxyId"] = proxy_id
+    if session_data:
+        payload["sessionData"] = session_data
+
+    try:
+        response = requests.patch(f"{API_BASE_URL}/accounts/{account_id}", json=payload, timeout=15)
+        response.raise_for_status()
+        print(f"Successfully updated account {account_id}.")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"API Error updating account {account_id}: {e}", file=sys.stderr)
+        return False
+    except json.JSONDecodeError:
+        print(f"API Error: Failed to decode JSON response when updating account {account_id}.", file=sys.stderr)
+        return False
+
+def get_2fa_code(secret_key):
+    if not secret_key:
+        print("Error: 2FA secret key is missing.", file=sys.stderr)
+        return None
+    try:
+        totp = pyotp.TOTP(secret_key)
+        return totp.now()
+    except Exception as e:
+        print(f"Error generating 2FA code: {e}", file=sys.stderr)
+        return None
+
+def login_instagram_account(account, proxy_url):
+    username = account.get('username')
+    password = account.get('password')
+    two_factor_secret = account.get('twoFactorAuthSecret')
+
+    print(f"Processing login for: {username}")
+    print(f"Using proxy: {proxy_url}")
+
+    # Get instance
+    L = instaloader.Instaloader()
+
+    # Set proxy for Instaloader
+    L.context._session.proxies = {'http': proxy_url, 'https': proxy_url}
+
+    try:
+        L.login(username, password)
+        session_data = L.save_session()
+        print(f"Login successful for {username}!")
+        return True, session_data, "Logged"
+    except instaloader.TwoFactorAuthRequiredException:
+        print("Two-factor authentication required.")
+        try:
+            # Generate the 2FA code using the secret key
+            two_factor_code = get_2fa_code(two_factor_secret)
+            if two_factor_code:
+                L.two_factor_login(two_factor_code)
+                session_data = L.save_session()
+                print(f"2FA login successful for {username}!")
+                return True, session_data, "Logged"
+            else:
+                print("Could not generate 2FA code (missing secret?).", file=sys.stderr)
+                return False, None, "TwoFactorAuthFailed"
+        except Exception as e:
+            print("Failed to complete 2FA login.", file=sys.stderr)
+            print("Error type:", type(e).__name__, file=sys.stderr)
+            print("Error message:", str(e), file=sys.stderr)
+            return False, None, "TwoFactorAuthFailed"
+    except instaloader.BadCredentialsException:
+        print("Error: Invalid password.", file=sys.stderr)
+        return False, None, "WrongPassword"
+    except instaloader.LoginException as e:
+        error_message = str(e)
+        print(f"LoginException encountered: {error_message}", file=sys.stderr)
+        if "Login: Checkpoint required" in error_message:
+            print(f"Error: Checkpoint required for {username}. Manual intervention needed.", file=sys.stderr)
+            return False, None, "VerificationRequired"
+        else:
+             print(f"Error: Username doesn't exist: {username}", file=sys.stderr)
+             return False, None, "NotExist"
+    except Exception as e:
+        print("An unexpected error occurred.", file=sys.stderr)
+        print("Error type:", type(e).__name__, file=sys.stderr)
+        print("Error message:", str(e), file=sys.stderr)
+        return False, None, None 
+
+def process_account_login(account_data_tuple):
+    account, proxy_port, proxy_url = account_data_tuple
+
+    account_id = account.get('id')
+    username = account.get('username')
+
+    full_proxy_string = f"{proxy_url}:{proxy_port}"
+
+    # Attempt login
+    login_success, session_data, status = login_instagram_account(account, full_proxy_string)
+
+    # Update database based on login result
+    if login_success:
+        # Create proxy record for the *successfully used* port
+        proxy_id = create_proxy_record(full_proxy_string, proxy_port)
+        # Update account status, link proxy (if created), save session
+        if update_account_record(account_id, status, proxy_id, session_data):
+            return True # Indicate success
+        else:
+            return False # Indicate failure during update
+    else:
+        # Login failed, update only the status
+        update_account_record(account_id, status)
+        return False
+
 if __name__ == "__main__":
     print("Starting Login Script...")
 
@@ -114,158 +251,37 @@ if __name__ == "__main__":
         print("No accounts found with status 'NotLogged'. Nothing to do.")
         sys.exit(0)
 
-    # Get max proxy details
-    success, new_proxy_port, proxy_url = get_proxy_details()
+    # Get proxy details
+    success, proxy_port, proxy_url = get_proxy_details()
     if not success:
         sys.exit(1)
 
-    print("\n--- Data Fetched ---")
-    print(f"Accounts to process: {len(not_logged_accounts)}")
-    print(f"Maximum proxy port found in DB: {new_proxy_port}")
-    print(f"URL for max proxy port: {proxy_url}")
+    print("Starting Login Process...")
 
-    # --- Placeholder for next steps ---
-    print("\n--- Starting Login Process (Placeholder) ---")
-    # TODO: Iterate through not_logged_accounts and attempt login using instaloader
-    # You would use the login_instagram_account function developed earlier,
-    # passing each account dictionary from the not_logged_accounts list.
-    # You might also use the max_proxy_port if your logic involves assigning ports.
+    # Prepare data for workers: List of (account, proxy_port, proxy_url) tuples
+    accounts_with_proxies = []
+    for i, account in enumerate(not_logged_accounts):
+        accounts_with_proxies.append((account, proxy_port + i, proxy_url))
 
-    # Example loop structure:
-    # successful_logins = 0
-    # for account in not_logged_accounts:
-    #     print(f"\nProcessing login for: {account.get('username')}")
-    #     # instance = login_instagram_account(account) # Assuming this function exists and uses API updates
-    #     # if instance:
-    #     #     successful_logins += 1
-    #     #     print(f"Login successful for {account.get('username')}")
-    #     # else:
-    #     #     print(f"Login failed for {account.get('username')}")
-    #     pass # Replace with actual login call
+    num_accounts = len(not_logged_accounts)
+    print(f"Starting processing for {num_accounts} accounts using up to {num_accounts} workers...")
 
-    # print(f"\n--- Login Process Finished ---")
-    # print(f"Successfully logged in {successful_logins} out of {len(not_logged_accounts)} accounts.")
+    start_time = time.time()
+    results = []
 
+    # Use ThreadPoolExecutor for managing threads
+    with ThreadPoolExecutor(max_workers=num_accounts) as executor:
+        results = list(executor.map(process_account_login, accounts_with_proxies))
 
-# --- Keep existing commented-out code or functions below if needed ---
-# ... (rest of your existing code like validate_proxy, get_2fa_code, etc.) ...
+    end_time = time.time()
+    duration = end_time - start_time
 
+    # Calculate final counts based on the boolean results from the workers
+    number_of_successful_logins = sum(1 for r in results if r is True)
+    number_of_failed_logins = num_accounts - number_of_successful_logins
 
-
-
-# login step: NotLogged
-# verification step: Blocked | VerificationRequired
-# ... (rest of your existing code) ...
-
-# login step: NotLogged
-# verification step: Blocked | VerificationRequired
-
-# Specify the folder for session files
-# session_folder = "sessions"
-# os.makedirs(session_folder, exist_ok=True)  # Create the folder if it doesn't exist
-# 
-# 
-# proxy_url = "http://ae74129a8d9b7bab7adf:a5fe7ce00ec06c0d@gw.dataimpulse.com:823"
-# secret_key = "SHQFBBJRBVH6OHMGQ34SHZ2PROJGTI7I"
-# username = "yecokex184"  # Replace with your Instagram username
-# password = "xiCYVkb6vp"  # Replace with your Instagram password
-# session_file = os.path.join(session_folder, f"{username}_session")
-# 
-# def validate_proxy(proxy_url):
-#     test_url = "https://www.instagram.com"
-#     proxies = {'http': proxy_url, 'https': proxy_url}
-#     try:
-#         response = requests.get(test_url, proxies=proxies, timeout=5)
-#         if response.status_code == 200:
-#             print("Proxy is valid and working.")
-#             return True
-#         else:
-#             print(f"Proxy test failed with status code: {response.status_code}")
-#             return False
-#     except requests.exceptions.RequestException as e:
-#         print(f"Proxy test failed: {e}")
-#         return False
-# 
-# # Function to generate 2FA code
-# def get_2fa_code(secret_key):
-#     totp = pyotp.TOTP(secret_key)
-#     return totp.now()
-# 
-# # Function to scrape posts associated with a hashtag
-# def scrape_hashtag_posts(L, hashtag_name):
-#     try:
-#         hashtag = instaloader.Hashtag.from_name(L.context, hashtag_name)
-#         print(f"Scraping posts for hashtag: #{hashtag_name}")
-# 
-#         # Iterate through posts associated with the hashtag
-#         for post in hashtag.get_all_posts():
-#             user_id = post.owner_id
-#             username = post.owner_profile.username
-#             print(f"Username: {username}, User ID: {user_id}")
-# 
-#             # Optionally, you can save this data to a file or database
-#             # For now, we just print it to the console
-#     except instaloader.QueryReturnedNotFoundException:
-#         print(f"there is no hashtag with the this name {hashtag_name}")
-# 
-# # Function to scrape posts associated with a hashtag
-# def scrape_followers(L, username):
-#     try:
-#         profile = instaloader.Profile.from_username(L.context, username)
-#         print(f"Scraping followers of: #{username}")
-# 
-#         for follower in profile.get_followers():
-#             user_id = follower.userid
-#             username = follower.username
-#             print(f"Username: {username}, User ID: {user_id}")
-# 
-#             # Optionally, you can save this data to a file or database
-#             # For now, we just print it to the console
-#     except instaloader.ProfileNotExistsException:
-#         print(f"there is no profile with the this username {username}")
-# 
-# # Validate proxy before proceeding
-# if validate_proxy(proxy_url):
-#     # Get instance
-#     L = instaloader.Instaloader()
-# 
-#     # Set proxy for Instaloader
-#     L.context._session.proxies = {'http': proxy_url, 'https': proxy_url}
-# 
-#     try:
-#         # Attempt to load session
-#         L.load_session_from_file(username, filename=session_file)
-#         print("Session loaded successfully!")
-#     except FileNotFoundError:
-#         print("Session does not exist. Logging in again.")
-#         try:
-#             L.login(username, password)
-#             print("Login successful!")
-#             # Save session to file
-#             L.save_session_to_file(filename=session_file)
-#             print(f"Session saved to {session_file}")
-#         except instaloader.exceptions.TwoFactorAuthRequiredException:
-#             print("Two-factor authentication required.")
-#             try:
-#                 # Generate the 2FA code using the secret key
-#                 two_factor_code = get_2fa_code(secret_key)
-#                 print(f"Generated 2FA code: {two_factor_code}")
-#                 L.two_factor_login(two_factor_code)
-#                 print("2FA login successful!")
-#                 # Save session to file
-#                 L.save_session_to_file(filename=session_file)
-#                 print(f"Session saved to {session_file}")
-#             except Exception as e:
-#                 print("Failed to complete 2FA login.")
-#                 print("Error type:", type(e).__name__)
-#                 print("Error message:", str(e))
-#         except instaloader.exceptions.BadCredentialsException:
-#             print("Error: Invalid username or password.")
-#         except instaloader.exceptions.ConnectionException:
-#             print("Error: Unable to connect. Check your internet or proxy settings.")
-#         except Exception as e:
-#             print("An unexpected error occurred.")
-#             print("Error type:", type(e).__name__)
-#             print("Error message:", str(e))
-# else:
-#     print("Proxy is not valid. Please check your proxy settings.")
+    print("\n--- Login Process Finished ---")
+    print(f"Total accounts processed: {num_accounts}")
+    print(f"Successful logins: {number_of_successful_logins}")
+    print(f"Failed logins: {number_of_failed_logins}")
+    print(f"Total execution time: {duration:.2f} seconds")

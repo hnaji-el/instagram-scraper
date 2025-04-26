@@ -73,6 +73,7 @@ const createCampaign = (
   );
 
   const scraper = spawn("python3", [
+    "-u",
     scriptPath,
     campaignName,
     JSON.stringify(targets),
@@ -253,7 +254,7 @@ const createAccountsHandler = async (
     );
 
     console.log(`Spawning login script: ${loginScriptPath}`);
-    const loginProcess = spawn("python3", [loginScriptPath]);
+    const loginProcess = spawn("python3", ["-u", loginScriptPath]);
 
     loginProcess.stdout.on("data", (data: Buffer) => {
       console.log(`[LOGIN SCRIPT STDOUT]: ${data.toString()}`);
