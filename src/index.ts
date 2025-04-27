@@ -2,7 +2,12 @@ import express, { Request, Response } from "express";
 import { spawn } from "child_process";
 import path from "path";
 
-import { PrismaClient, AccountStatus, Prisma } from "@prisma/client";
+import {
+  PrismaClient,
+  AccountStatus,
+  Prisma,
+  ProxyStatus,
+} from "@prisma/client";
 
 const app = express();
 app.use(express.json());
@@ -11,6 +16,73 @@ const prisma = new PrismaClient();
 
 const port = process.env.PORT ?? "3000";
 const domain = process.env.DOMAIN ?? "";
+
+const DATAIMPULSE_API_URL = process.env.DATAIMPULSE_API_URL ?? "";
+const DATAIMPULSE_USERNAME = process.env.DATAIMPULSE_USERNAME ?? "";
+const DATAIMPULSE_PASSWORD = process.env.DATAIMPULSE_PASSWORD ?? "";
+
+function getProxyBaseUrlAndProxyPort(proxy: string): {
+  proxyBaseUrl: string;
+  proxyPort: number;
+} {
+  const proxyParts = proxy.split(":");
+  const proxyPort = parseInt(proxyParts[proxyParts.length - 1], 10);
+  const proxyBaseUrl = proxyParts.slice(0, -1).join(":");
+
+  return { proxyBaseUrl, proxyPort };
+}
+
+async function fetchDataImpulseProxy(): Promise<{
+  proxyBaseUrl: string;
+  proxyPort: number;
+} | null> {
+  console.log(
+    "Attempting to fetch a new proxy from DataImpulse using Fetch API...",
+  );
+
+  // Construct URL with query string
+  const url = new URL(DATAIMPULSE_API_URL);
+  url.searchParams.append("countries", "de");
+  url.searchParams.append("type", "sticky");
+  url.searchParams.append("protocol", "socks5");
+  url.searchParams.append("format", "socks5://login:password@hostname:port");
+  url.searchParams.append("quantity", "1");
+
+  // Prepare Basic Authentication header
+  const basicAuth = Buffer.from(
+    `${DATAIMPULSE_USERNAME}:${DATAIMPULSE_PASSWORD}`,
+  ).toString("base64");
+  const headers = {
+    Authorization: `Basic ${basicAuth}`,
+  };
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: headers,
+    });
+
+    if (!res.ok) {
+      console.error("DataImpulse API Error: Failed to fetch new proxy");
+      return null;
+    }
+
+    const proxy = (await res.text()).trim();
+    if (!proxy) {
+      console.error("DataImpulse API Error: Received empty response body.");
+      return null;
+    }
+
+    console.log(`Successfully fetched and parsed new proxy: PROXY=${proxy}`);
+    return getProxyBaseUrlAndProxyPort(proxy);
+  } catch (error) {
+    console.error(
+      "DataImpulse API Error: Failed to fetch new proxy:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
 
 interface UpdateAccountBody {
   status?: AccountStatus;
@@ -162,6 +234,108 @@ const createProxyHandler = async (
   }
 };
 
+const createProxies = async (
+  proxy: { proxyBaseUrl: string; proxyPort: number },
+  numberToCreate: number,
+) => {
+  const { proxyBaseUrl, proxyPort } = proxy;
+  const proxiesToCreate: Prisma.ProxyCreateManyInput[] = [];
+
+  for (let i = 0; i < numberToCreate; i++) {
+    proxiesToCreate.push({
+      proxyUrl: `${proxyBaseUrl}:${(proxyPort + i).toString()}`,
+      proxyPort: proxyPort + i,
+    });
+  }
+
+  const proxyCreateResult = await prisma.proxy.createMany({
+    data: proxiesToCreate,
+  });
+
+  console.log(
+    `Created ${proxyCreateResult.count.toString()} new proxy records.`,
+  );
+};
+
+const getCreatedProxyIds = async (proxyPort: number, createdNumber: number) => {
+  const createdProxies = await prisma.proxy.findMany({
+    where: {
+      proxyPort: {
+        gte: proxyPort,
+        lt: proxyPort + createdNumber,
+      },
+    },
+    orderBy: { proxyPort: "asc" },
+    select: { id: true },
+  });
+
+  return createdProxies.map((p) => p.id);
+};
+
+const createProxiesAndGetTheirIds = async (numberToCreate: number) => {
+  const notUsedProxyCount = await prisma.proxy.count({
+    where: {
+      status: ProxyStatus.NotUsed,
+    },
+  });
+
+  // check if there is enough unused proxies in DB
+  if (notUsedProxyCount >= numberToCreate) {
+    const neededProxies = await prisma.proxy.findMany({
+      where: {
+        status: ProxyStatus.NotUsed,
+      },
+      take: numberToCreate, // Limit the result to the number of accounts
+      select: { id: true },
+    });
+    console.log(
+      `Found and reserved ${neededProxies.length.toString()} available 'NotUsed' proxies.`,
+    );
+    return neededProxies.map((p) => p.id);
+  } else {
+    // Check total number of proxies in DB
+    const totalProxyCount = await prisma.proxy.count();
+
+    if (totalProxyCount === 0) {
+      // fetch from DataImpulse
+      console.log(
+        "No existing proxies found. Fetching initial proxy from DataImpulse...",
+      );
+
+      const proxy = await fetchDataImpulseProxy();
+
+      if (!proxy) {
+        console.error("Failed to fetch initial proxy from DataImpulse");
+        throw new Error("Failed to fetch initial proxy from DataImpulse");
+      }
+
+      await createProxies(proxy, numberToCreate);
+      return await getCreatedProxyIds(proxy.proxyPort, numberToCreate);
+    } else {
+      // If proxies exist, but they're not enough, always create new ones based on the max port.
+      console.log("Existing proxies found. Determining next available port...");
+      const latestProxy = await prisma.proxy.findFirst({
+        orderBy: { proxyPort: "desc" },
+      });
+
+      // Should always find one if totalProxyCount > 0, but check just in case
+      if (!latestProxy) {
+        console.error(
+          "Error: Could not find the latest proxy despite totalProxyCount > 0. This indicates a potential data inconsistency.",
+        );
+        throw new Error("Failed to find latest proxy for port calculation.");
+      }
+
+      const proxy = getProxyBaseUrlAndProxyPort(latestProxy.proxyUrl);
+      proxy.proxyPort++;
+
+      // Prepare and create proxies for all accounts
+      await createProxies(proxy, numberToCreate);
+      return await getCreatedProxyIds(proxy.proxyPort, numberToCreate);
+    }
+  }
+};
+
 interface CreateAccountsBody {
   accounts: string[]; // an array of strings like "email|password|secret|username"
 }
@@ -220,31 +394,64 @@ const createAccountsHandler = async (
     return;
   }
 
-  // If no accounts were valid after parsing
-  if (accountsToCreate.length === 0 && accounts.length > 0) {
+  // If there is no accounts
+  if (accountsToCreate.length === 0) {
     res.status(400).json({
-      message: "No valid accounts found in the provided list after parsing",
-      createdCount: 0,
-    });
-    return;
-  } else if (accountsToCreate.length === 0) {
-    res.status(400).json({
-      message: "The 'accounts' array was empty.",
+      message: "The 'accounts' array was empty",
       createdCount: 0,
     });
     return;
   }
 
+  // --- Proxy Preparation ---
+  let proxyIdsToAssign: string[] = []; // Array to hold the proxy IDs
+
   try {
-    const result = await prisma.account.createMany({
-      data: accountsToCreate,
-      skipDuplicates: true,
+    console.log("Starting proxy preparation...");
+
+    proxyIdsToAssign = await createProxiesAndGetTheirIds(
+      accountsToCreate.length,
+    );
+
+    accountsToCreate.forEach((account, index) => {
+      account.proxyId = proxyIdsToAssign[index];
     });
+  } catch (proxyError) {
+    console.error("Error during proxy preparation:", proxyError);
+    res
+      .status(500)
+      .json({ error: "An error occurred during proxy preparation." });
+    return;
+  }
+  // --- End Proxy Preparation ---
+
+  try {
+    // Wrap account creation and proxy update in a transaction
+    const [result] = await prisma.$transaction([
+      prisma.account.createMany({
+        data: accountsToCreate,
+      }),
+      prisma.proxy.updateMany({
+        where: {
+          id: {
+            in: proxyIdsToAssign, // Target proxies whose IDs were assigned
+          },
+        },
+        data: {
+          status: ProxyStatus.Used, // Set their status to Used
+        },
+      }),
+    ]);
+
+    console.log(
+      `Updated status for ${proxyIdsToAssign.length.toString()} proxies to 'Used'.`,
+    );
 
     res.status(201).json({
       message: `Successfully processed batch. Attempted to create ${accountsToCreate.length.toString()} accounts`,
       createdCount: result.count,
     });
+
     // --- Spawn the login script AFTER sending the response ---
     // This runs as a background task and doesn't block the API response.
     // Only run if accounts were potentially added or intended to be added.
@@ -310,7 +517,7 @@ const getMaxProxyPortHandler = async (req: Request, res: Response) => {
 
     if (proxyWithMaxPort) {
       res.json({
-        maxProxyPort: proxyWithMaxPort.proxyPort as number,
+        maxProxyPort: proxyWithMaxPort.proxyPort,
         proxyUrl: proxyWithMaxPort.proxyUrl,
       });
     } else {

@@ -15,13 +15,18 @@ datasource db {
 }
 
 enum AccountStatus {
-  NotLogged
   Logged
+  NotLogged
   NotExist
   WrongPassword
   TwoFactorAuthFailed
   Blocked
   VerificationRequired
+}
+
+enum ProxyStatus {
+  Used
+  NotUsed
 }
 
 model Account {
@@ -41,6 +46,7 @@ model Proxy {
   id        String @id @default(uuid())
   proxyUrl  String @unique
   proxyPort Int @unique
+  status    ProxyStatus @default(NotUsed)
 
   account   Account?
 }
