@@ -134,47 +134,79 @@ interface CreateCampaignBody {
   type: "Hashtags" | "Followers"; // What kind of scraping to do
 }
 
+interface CreateCampaignBody {
+  campaignName: string;
+  targets: string[]; // List of usernames or hashtags
+  type: "Hashtags" | "Followers"; // What kind of scraping to do
+}
+
 const createCampaign = (
   req: Request<unknown, unknown, CreateCampaignBody>,
   res: Response,
 ) => {
   const { campaignName, targets, type } = req.body;
+
   const scriptPath = path.resolve(
     path.dirname(new URL(import.meta.url).pathname),
     "../instagram-login-and-scraper/scraper/main.py",
   );
 
-  const scraper = spawn("python3", [
-    "-u",
-    scriptPath,
-    campaignName,
-    JSON.stringify(targets),
-    type,
-  ]);
+  try {
+    console.log(
+      `Attempting to spawn scraper script: ${scriptPath} with args: ${campaignName}, ${JSON.stringify(targets)}, ${type}`,
+    );
+    const scraper = spawn("python3", [
+      "-u", // Unbuffered output
+      scriptPath,
+      campaignName,
+      JSON.stringify(targets), // Pass targets as a JSON string
+      type,
+    ]);
 
-  scraper.stdout.on("data", (data: Buffer) => {
-    console.log(`[SCRAPER STDOUT]: ${data.toString()}`);
-  });
+    // Event listeners for background logging
+    scraper.stdout.on("data", (data: Buffer) => {
+      console.log(
+        `[SCRAPER STDOUT - ${campaignName}]: ${data.toString().trim()}`,
+      );
+    });
 
-  scraper.stderr.on("data", (data: Buffer) => {
-    console.error(`[SCRAPER STDERR]: ${data.toString()}`);
-  });
+    scraper.stderr.on("data", (data: Buffer) => {
+      console.error(
+        `[SCRAPER STDERR - ${campaignName}]: ${data.toString().trim()}`,
+      );
+    });
 
-  scraper.on("close", (code: number) => {
-    console.log(`Scraper script exited with code ${code.toString()}`);
-    if (code === 0) {
-      res.status(200).json({ message: "Scraper script ran successfully." });
-    } else {
-      res
-        .status(500)
-        .json({ error: `Scraper Script exited with code ${code.toString()}` });
-    }
-  });
+    scraper.on("close", (code: number) => {
+      console.log(
+        `Scraper script for campaign '${campaignName}' exited with code ${code.toString()}`,
+      );
+    });
 
-  scraper.on("error", (err) => {
-    console.error("Failed to start scraper script", err);
-    res.status(500).json({ error: "Failed to start scraper script" });
-  });
+    scraper.on("error", (err) => {
+      console.error(
+        `Failed to run scraper script for campaign '${campaignName}':`,
+        err,
+      );
+    });
+
+    // 202 Accepted: The request has been accepted for processing,
+    // but the processing has not been completed.
+    res.status(202).json({
+      message: `Scraping campaign '${campaignName}' started successfully in the background.`,
+      campaign: campaignName,
+      type: type,
+      targetCount: targets.length,
+    });
+  } catch (error) {
+    console.error(
+      `Error spawning scraper script for campaign '${campaignName}':`,
+      error,
+    );
+    res.status(500).json({
+      error: "Failed to start the scraper script.",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
 };
 
 interface CreateProxyBody {
@@ -534,12 +566,257 @@ const getMaxProxyPortHandler = async (req: Request, res: Response) => {
   }
 };
 
+const getLoggedAccountsHandler = async (req: Request, res: Response) => {
+  const countParam = req.query.count as string;
+  const count = +countParam;
+
+  if (
+    !countParam ||
+    isNaN(parseInt(countParam, 10)) ||
+    parseInt(countParam, 10) <= 0
+  ) {
+    res
+      .status(400)
+      .json({ error: "Query parameter 'count' must be a positive integer." });
+    return;
+  }
+
+  try {
+    // Calculate the timestamp for 30 seconds ago
+    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+
+    const loggedAccounts = await prisma.account.findMany({
+      where: {
+        status: AccountStatus.Logged,
+        isActive: false, // Account must be inactive
+        isActiveUpdatedAt: {
+          lte: thirtySecondsAgo, // And it must have been inactive since at least 30 seconds ago
+        },
+      },
+      take: count, // Limit the number of results
+      include: {
+        proxy: true,
+      },
+      //  oldest inactive first to prioritize using them
+      orderBy: {
+        isActiveUpdatedAt: "asc",
+      },
+    });
+
+    if (loggedAccounts.length === 0) {
+      console.log(
+        "No logged accounts found matching the criteria (Logged, isActive=false for >= 30s).",
+      );
+    }
+
+    res.json(loggedAccounts);
+  } catch (error) {
+    console.error("Error fetching logged accounts:", error);
+    res.status(500).json({
+      error: "An error occurred while fetching logged accounts",
+    });
+  }
+};
+
+interface CampaignDataItem {
+  username: string;
+  id: string;
+}
+
+const addCampaignDataHandler = async (
+  req: Request<{ campaignName: string }, unknown, CampaignDataItem[]>,
+  res: Response,
+) => {
+  const { campaignName } = req.params;
+  const newDataArray = req.body;
+
+  // Validation for the incoming array
+  if (!Array.isArray(newDataArray)) {
+    res
+      .status(400)
+      .json({ error: "Invalid data format. Request body must be an array." });
+    return;
+  }
+  if (newDataArray.length === 0) {
+    res
+      .status(200)
+      .json({ message: "Received empty data array. No changes made." });
+    return;
+  }
+
+  try {
+    const existingCampaign = await prisma.campaign.findUnique({
+      where: { name: campaignName },
+      select: { data: true },
+    });
+
+    if (existingCampaign) {
+      // --- Campaign exists: Fetch, Merge, and Update ---
+      let currentData: CampaignDataItem[] = [];
+
+      // Safely check if existingCampaign.data is an array
+      if (Array.isArray(existingCampaign.data)) {
+        currentData = existingCampaign.data as unknown as CampaignDataItem[];
+      } else if (existingCampaign.data !== null) {
+        // Log a warning if data exists but isn't an array (unexpected state)
+        console.warn(
+          `Campaign '${campaignName}' data field was not an array. Overwriting with new data. Existing data:`,
+          existingCampaign.data,
+        );
+      }
+
+      // Merge the existing data with the new data
+      const updatedData = [...currentData, ...newDataArray];
+
+      // Update the campaign with the complete merged array
+      await prisma.campaign.update({
+        where: { name: campaignName },
+        data: {
+          data: updatedData as unknown as Prisma.JsonArray,
+        },
+      });
+
+      console.log(
+        `Successfully updated campaign '${campaignName}' by adding ${newDataArray.length.toString()} items. New total: ${updatedData.length.toString()}.`,
+      );
+    } else {
+      await prisma.campaign.create({
+        data: {
+          name: campaignName,
+          data: newDataArray as unknown as Prisma.JsonArray,
+        },
+      });
+      console.log(
+        `Successfully created campaign '${campaignName}' with ${newDataArray.length.toString()} data items.`,
+      );
+    }
+
+    res.status(200).json({
+      message: `Successfully processed ${newDataArray.length.toString()} data items for campaign '${campaignName}'.`,
+    });
+  } catch (error) {
+    console.error(
+      `Error processing data for campaign '${campaignName}':`,
+      error,
+    );
+    // Handle potential race condition on create (if two requests try to create simultaneously)
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" // Unique constraint violation
+    ) {
+      console.warn(
+        `Race condition likely occurred for creating campaign '${campaignName}'. Another request might have created it. Retrying might be needed or adjust logic.`,
+      );
+      // Optionally, you could retry the operation or inform the client differently
+      res.status(409).json({
+        error: `Conflict: Campaign '${campaignName}' might have been created by a concurrent request.`,
+      });
+    } else {
+      res.status(500).json({
+        error: "An error occurred while adding/updating campaign data.",
+      });
+    }
+  }
+};
+
+const getCampaignByNameHandler = async (
+  req: Request<{ campaignName: string }>,
+  res: Response,
+) => {
+  const { campaignName } = req.params;
+
+  try {
+    const campaign = await prisma.campaign.findUnique({
+      where: {
+        name: campaignName,
+      },
+    });
+
+    if (!campaign) {
+      res
+        .status(404)
+        .json({ error: `Campaign with name '${campaignName}' not found.` });
+      return;
+    }
+
+    res.json(campaign);
+  } catch (error) {
+    console.error(`Error fetching campaign '${campaignName}':`, error);
+    res.status(500).json({
+      error: "An error occurred while fetching the campaign.",
+    });
+  }
+};
+
+interface UpdateMultipleAccountsActivityBody {
+  accountIds: string[];
+  isActive: boolean;
+}
+
+const updateAccountsActivityHandler = async (
+  req: Request<unknown, unknown, UpdateMultipleAccountsActivityBody>,
+  res: Response,
+) => {
+  const { accountIds, isActive } = req.body;
+
+  if (
+    !Array.isArray(accountIds) ||
+    accountIds.some((id) => typeof id !== "string")
+  ) {
+    res
+      .status(400)
+      .json({ error: "'accountIds' must be an array of strings." });
+    return;
+  }
+  if (typeof isActive !== "boolean") {
+    res.status(400).json({
+      error: "'isNotActive' must be a boolean value (true or false).",
+    });
+    return;
+  }
+  if (accountIds.length === 0) {
+    res.status(400).json({ error: "'accountIds' array cannot be empty." });
+    return;
+  }
+
+  try {
+    const updateResult = await prisma.account.updateMany({
+      where: {
+        id: {
+          in: accountIds,
+        },
+      },
+      data: {
+        isActive: isActive,
+        isActiveUpdatedAt: new Date(),
+      },
+    });
+
+    res.json({
+      message: `Successfully attempted to update activity status for ${accountIds.length.toString()} accounts.`,
+      updatedCount: updateResult.count,
+      requestedStatus: { isActive },
+    });
+  } catch (error) {
+    console.error(`Error during bulk update of account activity:`, error);
+    // Note: updateMany doesn't throw specific "not found" errors like update does.
+    // It simply updates 0 records if none match.
+    res.status(500).json({
+      error: "An error occurred while updating account activity status.",
+    });
+  }
+};
+
 // Campaign
 app.post("/campaigns", createCampaign);
+app.post("/campaigns/:campaignName/data", addCampaignDataHandler);
+app.get("/campaigns/:campaignName", getCampaignByNameHandler);
 // Account
 app.post("/accounts", createAccountsHandler);
 app.get("/accounts/not-logged", getNotLoggedAccountsHandler);
+app.get("/accounts/logged", getLoggedAccountsHandler);
 app.patch("/accounts/:id", updateAccountHandler);
+app.patch("/accounts/activity", updateAccountsActivityHandler);
 // Proxy
 app.post("/proxy", createProxyHandler);
 app.get("/proxies/max-port", getMaxProxyPortHandler);

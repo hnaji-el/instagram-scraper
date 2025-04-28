@@ -36,6 +36,8 @@ model Account {
   password            String
   twoFactorAuthSecret String
   status              AccountStatus @default(NotLogged)
+  isActive            Boolean @default(false)
+  isActiveUpdatedAt   DateTime @db.Timestamptz @default(now()) 
   sessionData         Json?
 
   proxyId             String?    @unique

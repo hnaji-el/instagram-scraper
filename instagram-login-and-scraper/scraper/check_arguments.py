@@ -10,7 +10,7 @@ def check_arguments():
         try:
             targets = json.loads(targets_json)
             if not isinstance(targets, list): # Check if targets is a list
-                 raise ValueError("Targets argument must be a JSON list.")
+                raise ValueError("Targets argument must be a JSON list.")
         except (json.JSONDecodeError, ValueError) as e:
             print(f"Error: Invalid format for targets argument: {targets_json}", file=sys.stderr)
             print(f"Details: {e}", file=sys.stderr)
