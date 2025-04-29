@@ -73,7 +73,7 @@ def fetch_logged_accounts(count: int):
 
 def send_data_to_api(campaign, scraped_accounts, thread_name):
     try:
-        api_url = f"{API_BASE_URL}/campaigns/{campaign}/data"
+        api_url = f"{API_BASE_URL}/campaigns/{campaign}"
         response = requests.post(api_url, json=scraped_accounts, timeout=10)
         response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
         return True
@@ -103,6 +103,7 @@ def scrape_hashtag_posts(L: instaloader.Instaloader, hashtag_name: str, thread_n
                     counter[0] += len(scraped_accounts)
                 items_sent_count += len(scraped_accounts)
                 scraped_accounts = []
+                break
 
         if scraped_accounts:  # Send remaining data
             send_data_to_api(campaign, scraped_accounts, thread_name)
