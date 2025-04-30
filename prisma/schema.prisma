@@ -21,7 +21,8 @@ enum AccountStatus {
   WrongPassword
   TwoFactorAuthFailed
   Blocked
-  VerificationRequired
+  CheckpointRequired
+  ChallengeRequired
 }
 
 enum ProxyStatus {

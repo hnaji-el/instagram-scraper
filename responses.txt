@@ -1,0 +1,113 @@
+Error type: LoginException
+Error message: Login: Checkpoint required. Point your browser to https://www.instagram.com/challenge/AXF5WG_gY9paNq7V-AftP7HGn40m2-J74nkSh4YkKsQtygn0WhXnMi8okRrCYDUbmL9M-wk/AfzWmPCGLwfYMCM7qMm8Je-6MoJzlhkuzdqUMOVaPtpVuQBFTu8EfVqanpHLI34uxue6FpxzU2llyg/?challenge_context=Af4pr4YA4Y_9aPZXcPPk58hVN3q6AKlTRPOkoTjC7Qma_boiVgJn9rSW9rvA2-kc8FHc2YnC04DMqBBz2P1Cm6_oCyvwDhY5QvCPpFKRTjYDn0_1RsiFJ9e4UoRkZ4RRiKoYRWcXsTkH0dvhVQcx7-j1uk1rz61tKEv5hj4VSLRYiL8WjlmEOAkMGqqnIdt_JKBSZwG2AhP_79FRMy67HDXD3M4j-7HQ-pA5bTVtqLO02GNJG-Z21zmyqXiGynU-KooYjq2dGUooSfsddH8GIRg6kXkrJl__-sHmscMkrd6MPOPi8TMJDCIak2JcHJwsDjzmiaxPGjDqefxM9_B6AA2y-W-KTgdFcqbh8OZ-AxXvIxPPXpqZtsPmXXj7fYR78T6e6epTs_14HBA9KDrrjBfwP0rEf8mxrUwtuTqVRX5U8RLJq21PPUH7D-3jXPlCOzWZQpueFcpTrbrtBY_tW2lNlZggrt75SRnQNLfMjY6KN321OuNGPUaUsE-vwc5vdnp2v4DE8ujqyCoFMEQfyqFdcvtruKdzPhNwwa_N7RNCX1fpmoa5KUQWfFD_malCufkOzXciea_ud78jwVkhUKp_jqJMSqljtsoAHSE-pAr0a6E3YcRgkzv3jG2lgC53lTJv7rRyYXT3N5176pvNZQbo_anNW8cQ2DWnDTNYMi37IXSpPNF1hpolGd8coIirvhSpNyxsYimX8ZGCVyaG-Ne7l3RHzGUyy2UMr_o8T0myr70052Wd4a2PKoGfmVJf8f7BaSAJ8z445qR2b4u3p3Vhzcgol584bLfTzUSozQqBy-Mh-eXP-cZFClqwoxejRr6EHxe2D2vKWAGe2YIkOofqklQyIOGHgt5-5ozXhGXszqVddXoEgae_lVOrtQvzlLJ5X_2DNTbn_EU48EKTd4sxRgZzX2ZuMWYiyKmSfNKVGcomTsiDPiiB0bu3tIxGO-zzMg2amDB_hjUTcjpSnb6g-V80qxFwIqsIqabAVFTJX_-66VHp9XyFNYTMoSugnfDs3ynrx-v8-YdDO18IW_BIyRHrCCFm-BAkrcUNxUh5kULs2V1ssgpLh8EthaVhnuMMLt0-hITpqtwDlcjRpmFlNTOIPM2s1iVBDuwQ5lSlHNZElSTXtjP4tFF9wHPrVG2L3R8W83D1uLTpJh49TlSiyWWBh3tVP_XFYgYL5-IImBprE9kADeEdsHaLSkEMkc3VgcZSEAo2fWBMW-2PoRTIGxugT3OwUQNqDWZFjrrPqxSSt3zuMcHvInUdxWqFmt00VgrFBD0PzhxA_lIP3vc_nAncunQQwLHCo1rHciNYLB0KiGQTPD5Bup4mKdr88U2-MEemtyA6ngwVFrfy9crHw95ON3pt1T0itlldbI822cyte201sxBkwQu3FfpNmALmx7hGorrPXcK6npqflce7uio2adCn1uICBVKhKiBFtQJppG5ktB5xGYnbEM2SYKg3CJezUclFhb4Qx9o5n3sGE_La_Ufn_HBZKNNg3Ybpx6UT60pp78MSP3q9eT-ByQ0t0hxrmevn9jXZZFevWe7cxU4qLBeK_gbTg7M13QY2gwICDbKsmaydphxjWfb8XUFuXGGNrr_LRErKH3fdraCFOQBiYSQFroOZL3QsLv0JO0-cYS_wvbDmTkr07OrDwHHwS9ofX4_24rwT6D-L5KaEMg-eBk-71ysZDZO38R3K01sMA5Nge_3wxh8nuJhNeKmaEvY_5zW9wx6GgEAPSXdCblU0NvnByeWfiW5M7bp2YqM9NUEpXECmoQbojv5kUJtUKN4P8h9rspJIpfBRSB9XV0TcUjs-v7mem2J0HWe-7A1JUbfxcPS8RqkL8e0L0fSnfNQUgGTzvV1QiIUIom72r3twfzgaTv7JnAsd_oligfdsnNCOOKPr - follow the instructions, then retry.
+
+Error type: LoginException
+Error message: Login error: "fail" status, message "".
+
+Error type: TwoFactorAuthRequiredException
+Error message: Login error: two-factor authentication required.
+
+Error type: QueryReturnedBadRequestException
+Error message: 400 Bad Request - "fail" status, message "checkpoint_required" when accessing https://www...
+
+Error type: QueryReturnedBadRequestException
+Error message: 400 Bad Request - "fail" status, message "challenge_required" when accessing https://...
+
+Error type: ConnectionException
+Error message: JSON Query to graphql/query: 401 Unauthorized - "fail" status, message "Please wait a few minutes before you try again." when accessing https://www.instagram.com/graphql/query?query_hash=9b498c08113f1e09617a1703c22b2f32&variables=%7B%22tag_name%22%3A%22barca%22%2C%22first%22%3A12%2C%22after%22%3A%22QVFDM1hBVEp1YWpERHpMWlplRFdiR0h0NUR3azVzWXQ0a3FDTUEtUlUwZ0VqZnJsUVplNDlKbHQ2TXlqbUNnbTFzaXJtZ29xcVBtVXJhTXRFMHZFdXZtOA%3D%3D%22%7D [retrying; skip with ^C]
+
+Error type: ConnectionException
+Error message: JSON Query to api/v1/tags/web_info/: 403 Forbidden - "fail" status, message "login_required" when accessing https://i.instagram.com/api/v1/tags/web_info/?__a=1&__d=dis&tag_name=koora [retrying; skip with ^C]
+
+=========================================================================================================
+=========================================================================================================
+
+[SCRAPER STDOUT]: Too many queries in the last time. Need to wait 192 seconds, until 02:54.
+
+ConnectionException
+JSON Query to graphql/query: 401 Unauthorized - "fail" status, message "Please wait a few minutes before you try again." when accessing https://www.instagram.com/graphql/query?query_hash=9b498c08113f1e09617a1703c22b2f32&variables=%7B%22tag_name%22%3A%22barca%22%2C%22first%22%3A12%2C%22after%22%3A%22QVFDM1hBVEp1YWpERHpMWlplRFdiR0h0NUR3azVzWXQ0a3FDTUEtUlUwZ0VqZnJsUVplNDlKbHQ2TXlqbUNnbTFzaXJtZ29xcVBtVXJhTXRFMHZFdXZtOA%3D%3D%22%7D [retrying; skip with ^C]
+
+ConnectionException
+JSON Query to api/v1/tags/web_info/: 403 Forbidden - "fail" status, message "login_required" when accessing https://i.instagram.com/api/v1/tags/web_info/?__a=1&__d=dis&tag_name=koora [retrying; skip with ^C]
+
+=========================================================================================================
+=========================================================================================================
+
+Attempting to initiate scraper script: /app/instagram-login-and-scraper/scraper/main.py with args: campaign, ["koora"], Hashtags
+[SCRAPER STDOUT]: Received Campaign Name: campaign
+[SCRAPER STDOUT]: Received Targets: ['koora']
+Received Type: Hashtags
+Fetching 1 logged accounts...
+[SCRAPER STDOUT]: Successfully fetched 1 accounts.
+[SCRAPER STDOUT]: Attempting to update activity for 1 accounts to isNotActive=True...
+Successfully attempted to update activity status for 1 accounts.
+[SCRAPER STDOUT]: Successfully requested activity update. API response: {'message': 'Successfully attempted to update activity status for 1 accounts.', 'updatedCount': 1, 'requestedStatus': {'isActive': True}}
+[SCRAPER STDOUT]: Starting scraping campaign 'campaign' for 1 targets using 1 accounts.
+[SCRAPER STDOUT]: Thread-Worker-1: Starting worker for account yecokex184 and target koora
+[SCRAPER STDOUT]: Thread-Worker-1: Successfully loaded session for yecokex184
+[SCRAPER STDOUT]: Waiting for all scraping threads to complete...
+[SCRAPER STDOUT]:
+[SCRAPER STDOUT]: Thread-Worker-1: Worker finished processing target 'koora'.
+[SCRAPER STDERR]: Error type: QueryReturnedBadRequestException
+Error message: 400 Bad Request - "fail" status, message "challenge_required" when accessing https://i.instagram.com/api/v1/tags/web_info/?__a=1&__d=dis&tag_name=koora
+[SCRAPER STDOUT]: Attempting to update activity for 1 accounts to isNotActive=False...
+Successfully attempted to update activity status for 1 accounts.
+[SCRAPER STDOUT]: Successfully requested activity update. API response: {'message': 'Successfully attempted to update activity status for 1 accounts.', 'updatedCount': 1, 'requestedStatus': {'isActive': False}}
+[SCRAPER STDOUT]: --- Scraping Campaign Finished ---
+Campaign Name: campaign
+Scrape Type: Hashtags
+Total items successfully scraped and sent to API: 0
+Script finished.
+Scraper script for campaign 'campaign' exited with code 0
+
+
+=========================================================================================================
+=========================================================================================================
+=========================================================================================================
+=========================================================================================================
+
+[SCRAPER STDOUT - campain_1]: Thread-Worker-2: Scraping followers of: rida_benlahcen
+[SCRAPER STDOUT - campain_1]: Thread-Worker-1: Scraping followers of: zeeshanbieber007
+Successfully created campaign 'campain_1' with 50 data items.
+Successfully updated campaign 'campain_1' by adding 50 items. New total: 100.
+Successfully updated campaign 'campain_1' by adding 50 items. New total: 150.
+Successfully updated campaign 'campain_1' by adding 50 items. New total: 200.
+Successfully updated campaign 'campain_1' by adding 50 items. New total: 250.
+Successfully updated campaign 'campain_1' by adding 50 items. New total: 300.
+[SCRAPER STDERR - campain_1]: Thread-Worker-2: Error during scraping/sending for profile rida_benlahcen: 400 Bad Request - "fail" status, message "checkpoint_required" when accessing https://www.instagram.com/graphql/query?query_hash=37479f2b8209594dde7facb0d904896a&variables=%7B%22id%22%3A%227797621286%22%2C%22first%22%3A12%2C%22after%22%3A%22QVFBXzRjUmxFeE9RZFAwZHlRcUhKbEhWdVpycjBfSEpBU3F2TG1rS05rc0tRak8yN2JHOWw4UkM0TTREbUE4OXNiNkJmM0VfSXliWHVWUG5jNzJYRXB4VQ%3D%3D%22%7D
+[SCRAPER STDERR - campain_1]:
+[SCRAPER STDERR - campain_1]: Error type:
+[SCRAPER STDERR - campain_1]: QueryReturnedBadRequestException
+Error message: 400 Bad Request - "fail" status, message "checkpoint_required" when accessing https://www.instagram.com/graphql/query?query_hash=37479f2b8209594dde7facb0d904896a&variables=%7B%22id%22%3A%227797621286%22%2C%22first%22%3A12%2C%22after%22%3A%22QVFBXzRjUmxFeE9RZFAwZHlRcUhKbEhWdVpycjBfSEpBU3F2TG1rS05rc0tRak8yN2JHOWw4UkM0TTREbUE4OXNiNkJmM0VfSXliWHVWUG5jNzJYRXB4VQ%3D%3D%22%7D
+[SCRAPER STDERR - campain_1]: Traceback (most recent call last):
+[SCRAPER STDERR - campain_1]: File "/app/instagram-login-and-scraper/scraper/main.py", line 133, in scrape_followers
+    for follower in profile.get_followers():
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/instaloader/nodeiterator.py", line 160, in __next__
+    query_response = self._query(self._data['page_info']['end_cursor'])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/instaloader/nodeiterator.py", line 109, in _query
+    return self._query_query_hash(self._query_hash, after)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/instaloader/nodeiterator.py", line 131, in _query_query_hash
+    self._context.graphql_query(
+  File "/opt/venv/lib/python3.12/site-packages/instaloader/instaloadercontext.py", line 511, in graphql_query
+    resp_json = self.get_json('graphql/query',
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/instaloader/instaloadercontext.py", line 450, in get_json
+    raise QueryReturnedBadRequestException(self._response_error(resp))
+instaloader.exceptions.QueryReturnedBadRequestException: 400 Bad Request - "fail" status, message "checkpoint_required" when accessing https://www.instagram.com/graphql/query?query_hash=37479f2b8209594dde7facb0d904896a&variables=%7B%22id%22%3A%227797621286%22%2C%22first%22%3A12%2C%22after%22%3A%22QVFBXzRjUmxFeE9RZFAwZHlRcUhKbEhWdVpycjBfSEpBU3F2TG1rS05rc0tRak8yN2JHOWw4UkM0TTREbUE4OXNiNkJmM0VfSXliWHVWUG5jNzJYRXB4VQ%3D%3D%22%7D
+[SCRAPER STDOUT - campain_1]: Thread-Worker-2: Worker finished processing target 'rida_benlahcen'.
+Successfully updated campaign 'campain_1' by adding 50 items. New total: 350.
+Successfully updated campaign 'campain_1' by adding 12 items. New total: 362.
+[SCRAPER STDOUT - campain_1]: Thread-Worker-1: Finished scraping followers for zeeshanbieber007. Successfully sent 162 items to API.
+Thread-Worker-1: Worker finished processing target 'zeeshanbieber007'.
+Attempting to update activity for 2 accounts to isNotActive=False via http://localhost:3000/accounts/activity...
+[SCRAPER STDERR - campain_1]: Error during bulk activity update (http://localhost:3000/accounts/activity): 400 Client Error: Bad Request for url: http://localhost:3000/accounts/activity
+[SCRAPER STDOUT - campain_1]: --- Scraping Campaign Finished ---
+Campaign Name: campain_1
+Scrape Type: Followers
+Total items successfully scraped and sent to API: 362
+Script finished.
+Scraper script for campaign 'campain_1' exited with code 0
+2025-04-28 14:39:53.663 UTC [56] LOG:  checkpoint starting: time

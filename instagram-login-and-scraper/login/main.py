@@ -97,7 +97,7 @@ def login_instagram_account(account, proxy):
         print(f"LoginException encountered: {error_message}", file=sys.stderr)
         if "Login: Checkpoint required" in error_message:
             print(f"Error: Checkpoint required for {username}. Manual intervention needed.", file=sys.stderr)
-            return False, None, "VerificationRequired"
+            return False, None, "CheckpointRequired"
         else:
              print(f"Error: Username doesn't exist: {username}", file=sys.stderr)
              return False, None, "NotExist"

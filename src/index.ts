@@ -29,8 +29,8 @@ app.post("/launch-login", launchLogin);
 app.post("/accounts", createAccounts);
 app.get("/accounts/not-logged", getNotLoggedAccounts);
 app.get("/accounts/logged", getLoggedAccounts);
-app.patch("/accounts/:id", updateAccount);
 app.patch("/accounts/activity", updateAccountsActivity);
+app.patch("/accounts/:id", updateAccount);
 
 app.listen(port, () => {
   console.log(`Server is running on ${domain}:${port}`);

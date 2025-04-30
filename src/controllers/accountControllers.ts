@@ -263,11 +263,7 @@ export const getLoggedAccounts = async (req: Request, res: Response) => {
   const countParam = req.query.count as string;
   const count = +countParam;
 
-  if (
-    !countParam ||
-    isNaN(parseInt(countParam, 10)) ||
-    parseInt(countParam, 10) <= 0
-  ) {
+  if (!countParam || isNaN(count) || count <= 0) {
     res
       .status(400)
       .json({ error: "Query parameter 'count' must be a positive integer." });
@@ -290,9 +286,8 @@ export const getLoggedAccounts = async (req: Request, res: Response) => {
       include: {
         proxy: true,
       },
-      //  oldest inactive first to prioritize using them
       orderBy: {
-        isActiveUpdatedAt: "asc",
+        isActiveUpdatedAt: "asc", // oldest inactive first to prioritize using them
       },
     });
 
@@ -332,6 +327,9 @@ export const updateAccount = async (
   }
 
   if (status && !Object.values(AccountStatus).includes(status)) {
+    console.log(
+      "#####################################################################",
+    );
     res.status(400).json({ error: "status is not valid" });
     return;
   }
@@ -368,6 +366,7 @@ export const updateAccountsActivity = async (
 
   if (
     !Array.isArray(accountIds) ||
+    accountIds.length === 0 ||
     accountIds.some((id) => typeof id !== "string")
   ) {
     res
@@ -375,14 +374,11 @@ export const updateAccountsActivity = async (
       .json({ error: "'accountIds' must be an array of strings." });
     return;
   }
+
   if (typeof isActive !== "boolean") {
     res.status(400).json({
       error: "'isNotActive' must be a boolean value (true or false).",
     });
-    return;
-  }
-  if (accountIds.length === 0) {
-    res.status(400).json({ error: "'accountIds' array cannot be empty." });
     return;
   }
 
@@ -399,6 +395,10 @@ export const updateAccountsActivity = async (
       },
     });
 
+    console.log(
+      `Successfully attempted to update activity status for ${accountIds.length.toString()} accounts.`,
+    );
+
     res.json({
       message: `Successfully attempted to update activity status for ${accountIds.length.toString()} accounts.`,
       updatedCount: updateResult.count,
@@ -406,8 +406,6 @@ export const updateAccountsActivity = async (
     });
   } catch (error) {
     console.error(`Error during bulk update of account activity:`, error);
-    // Note: updateMany doesn't throw specific "not found" errors like update does.
-    // It simply updates 0 records if none match.
     res.status(500).json({
       error: "An error occurred while updating account activity status.",
     });

@@ -1,5 +1,8 @@
 -- CreateEnum
-CREATE TYPE "AccountStatus" AS ENUM ('NotLogged', 'Logged', 'NotExist', 'WrongPassword', 'TwoFactorAuthFailed', 'Blocked', 'VerificationRequired');
+CREATE TYPE "AccountStatus" AS ENUM ('Logged', 'NotLogged', 'NotExist', 'WrongPassword', 'TwoFactorAuthFailed', 'Blocked', 'CheckpointRequired', 'ChallengeRequired');
+
+-- CreateEnum
+CREATE TYPE "ProxyStatus" AS ENUM ('Used', 'NotUsed');
 
 -- CreateTable
 CREATE TABLE "Account" (
@@ -9,6 +12,8 @@ CREATE TABLE "Account" (
     "password" TEXT NOT NULL,
     "twoFactorAuthSecret" TEXT NOT NULL,
     "status" "AccountStatus" NOT NULL DEFAULT 'NotLogged',
+    "isActive" BOOLEAN NOT NULL DEFAULT false,
+    "isActiveUpdatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "sessionData" JSONB,
     "proxyId" TEXT,
 
@@ -20,6 +25,7 @@ CREATE TABLE "Proxy" (
     "id" TEXT NOT NULL,
     "proxyUrl" TEXT NOT NULL,
     "proxyPort" INTEGER NOT NULL,
+    "status" "ProxyStatus" NOT NULL DEFAULT 'NotUsed',
 
     CONSTRAINT "Proxy_pkey" PRIMARY KEY ("id")
 );

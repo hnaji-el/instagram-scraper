@@ -67,13 +67,13 @@ export const launchScraper = (
 
     scraper.stdout.on("data", (data: Buffer) => {
       console.log(
-        `[SCRAPER STDOUT - ${campaignName}]: ${data.toString().trim()}`,
+        `[SCRAPER STDOUT]: ${data.toString().trim()}`,
       );
     });
 
     scraper.stderr.on("data", (data: Buffer) => {
       console.error(
-        `[SCRAPER STDERR - ${campaignName}]: ${data.toString().trim()}`,
+        `[SCRAPER STDERR]: ${data.toString().trim()}`,
       );
     });
 
@@ -114,10 +114,10 @@ interface CampaignDataItem {
 }
 
 export const createCampaign = async (
-  req: Request<{ campaignName: string }, unknown, CampaignDataItem[]>,
+  req: Request<{ name: string }, unknown, CampaignDataItem[]>,
   res: Response,
 ) => {
-  const { campaignName } = req.params;
+  const { name } = req.params;
   const newDataArray = req.body;
 
   // Validation for the incoming array
@@ -136,7 +136,7 @@ export const createCampaign = async (
 
   try {
     const existingCampaign = await prisma.campaign.findUnique({
-      where: { name: campaignName },
+      where: { name: name },
       select: { data: true },
     });
 
@@ -150,7 +150,7 @@ export const createCampaign = async (
       } else if (existingCampaign.data !== null) {
         // Log a warning if data exists but isn't an array (unexpected state)
         console.warn(
-          `Campaign '${campaignName}' data field was not an array. Overwriting with new data. Existing data:`,
+          `Campaign '${name}' data field was not an array. Overwriting with new data. Existing data:`,
           existingCampaign.data,
         );
       }
@@ -160,46 +160,43 @@ export const createCampaign = async (
 
       // Update the campaign with the complete merged array
       await prisma.campaign.update({
-        where: { name: campaignName },
+        where: { name: name },
         data: {
           data: updatedData as unknown as Prisma.JsonArray,
         },
       });
 
       console.log(
-        `Successfully updated campaign '${campaignName}' by adding ${newDataArray.length.toString()} items. New total: ${updatedData.length.toString()}.`,
+        `Successfully updated campaign '${name}' by adding ${newDataArray.length.toString()} items. New total: ${updatedData.length.toString()}.`,
       );
     } else {
       await prisma.campaign.create({
         data: {
-          name: campaignName,
+          name: name,
           data: newDataArray as unknown as Prisma.JsonArray,
         },
       });
       console.log(
-        `Successfully created campaign '${campaignName}' with ${newDataArray.length.toString()} data items.`,
+        `Successfully created campaign '${name}' with ${newDataArray.length.toString()} data items.`,
       );
     }
 
     res.status(200).json({
-      message: `Successfully processed ${newDataArray.length.toString()} data items for campaign '${campaignName}'.`,
+      message: `Successfully processed ${newDataArray.length.toString()} data items for campaign '${name}'.`,
     });
   } catch (error) {
-    console.error(
-      `Error processing data for campaign '${campaignName}':`,
-      error,
-    );
+    console.error(`Error processing data for campaign '${name}':`, error);
     // Handle potential race condition on create (if two requests try to create simultaneously)
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002" // Unique constraint violation
     ) {
       console.warn(
-        `Race condition likely occurred for creating campaign '${campaignName}'. Another request might have created it. Retrying might be needed or adjust logic.`,
+        `Race condition likely occurred for creating campaign '${name}'. Another request might have created it. Retrying might be needed or adjust logic.`,
       );
       // Optionally, you could retry the operation or inform the client differently
       res.status(409).json({
-        error: `Conflict: Campaign '${campaignName}' might have been created by a concurrent request.`,
+        error: `Conflict: Campaign '${name}' might have been created by a concurrent request.`,
       });
     } else {
       res.status(500).json({
@@ -210,28 +207,28 @@ export const createCampaign = async (
 };
 
 export const getCampaign = async (
-  req: Request<{ campaignName: string }>,
+  req: Request<{ name: string }>,
   res: Response,
 ) => {
-  const { campaignName } = req.params;
+  const { name } = req.params;
 
   try {
     const campaign = await prisma.campaign.findUnique({
       where: {
-        name: campaignName,
+        name: name,
       },
     });
 
     if (!campaign) {
       res
         .status(404)
-        .json({ error: `Campaign with name '${campaignName}' not found.` });
+        .json({ error: `Campaign with name '${name}' not found.` });
       return;
     }
 
     res.json(campaign);
   } catch (error) {
-    console.error(`Error fetching campaign '${campaignName}':`, error);
+    console.error(`Error fetching campaign '${name}':`, error);
     res.status(500).json({
       error: "An error occurred while fetching the campaign.",
     });
