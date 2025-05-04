@@ -66,15 +66,11 @@ export const launchScraper = (
     ]);
 
     scraper.stdout.on("data", (data: Buffer) => {
-      console.log(
-        `[SCRAPER STDOUT]: ${data.toString().trim()}`,
-      );
+      console.log(`[SCRAPER STDOUT]: ${data.toString().trim()}`);
     });
 
     scraper.stderr.on("data", (data: Buffer) => {
-      console.error(
-        `[SCRAPER STDERR]: ${data.toString().trim()}`,
-      );
+      console.error(`[SCRAPER STDERR]: ${data.toString().trim()}`);
     });
 
     scraper.on("close", (code: number) => {
@@ -226,7 +222,13 @@ export const getCampaign = async (
       return;
     }
 
-    res.json(campaign);
+    let scrapedAccountCount = 0;
+
+    if (Array.isArray(campaign.data)) {
+      scrapedAccountCount = campaign.data.length;
+    }
+
+    res.json({ scrapedAccountCount, ...campaign });
   } catch (error) {
     console.error(`Error fetching campaign '${name}':`, error);
     res.status(500).json({

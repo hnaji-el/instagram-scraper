@@ -46,7 +46,7 @@ def update_accounts_activity(account_ids: List[str], is_active: bool):
         "isActive": is_active
     }
 
-    print(f"Attempting to update activity for {len(account_ids)} accounts to isNotActive={is_active}...")
+    print(f"Attempting to update activity for {len(account_ids)} accounts to isActive={is_active}...")
 
     try:
         response = requests.patch(api_url, json=payload, timeout=15)

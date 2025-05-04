@@ -244,7 +244,9 @@ export const getNotLoggedAccounts = async (req: Request, res: Response) => {
   try {
     const notLoggedAccounts = await prisma.account.findMany({
       where: {
-        status: AccountStatus.NotLogged, // Filter by status
+        status: {
+          in: [AccountStatus.NotLogged, AccountStatus.TwoFactorAuthFailed],
+        },
       },
       include: {
         proxy: true,
@@ -377,7 +379,7 @@ export const updateAccountsActivity = async (
 
   if (typeof isActive !== "boolean") {
     res.status(400).json({
-      error: "'isNotActive' must be a boolean value (true or false).",
+      error: "'isActive' must be a boolean value (true or false).",
     });
     return;
   }

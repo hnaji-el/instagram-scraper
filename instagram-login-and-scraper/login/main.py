@@ -72,23 +72,35 @@ def login_instagram_account(account, proxy):
         print(f"Login successful for {username}!")
         return True, session_data, "Logged"
     except instaloader.TwoFactorAuthRequiredException:
-        print("Two-factor authentication required.")
-        try:
-            # Generate the 2FA code using the secret key
-            two_factor_code = get_2fa_code(two_factor_secret)
-            if two_factor_code:
-                L.two_factor_login(two_factor_code)
-                session_data = L.save_session()
-                print(f"2FA login successful for {username}!")
-                return True, session_data, "Logged"
-            else:
-                print("Could not generate 2FA code (missing secret?).", file=sys.stderr)
-                return False, None, "TwoFactorAuthFailed"
-        except Exception as e:
-            print("Failed to complete 2FA login.", file=sys.stderr)
-            print("Error type:", type(e).__name__, file=sys.stderr)
-            print("Error message:", str(e), file=sys.stderr)
+        print(f"Thread-{username}: Two-factor authentication required.")
+
+        two_factor_secret = account.get('twoFactorAuthSecret')
+        if not two_factor_secret:
+            print(f"Thread-{username}: Missing 2FA secret key.", file=sys.stderr)
             return False, None, "TwoFactorAuthFailed"
+        
+        # Try up to 3 times for 2FA code itself
+        for attempt in range(3):
+            try:
+                two_factor_code = get_2fa_code(two_factor_secret)
+                if two_factor_code:
+                    print(f"Thread-{username}: Attempting 2FA login (Attempt {attempt + 1}/3)...")
+                    L.two_factor_login(two_factor_code)
+                    session_data = L.save_session()
+                    print(f"Thread-{username}: 2FA login successful!")
+                    return True, session_data, "Logged"
+                else:
+                    # Should not happen if secret exists, but handle defensively
+                    print(f"Thread-{username}: Could not generate 2FA code.", file=sys.stderr)
+                    return False, None, "TwoFactorAuthFailed"
+            except Exception as e:
+                print(f"Thread-{username}: Failed 2FA login attempt {attempt + 1}/3.", file=sys.stderr)
+                print(f"Thread-{username}: Error type: {type(e).__name__}", file=sys.stderr)
+                print(f"Thread-{username}: Error message: {str(e)}", file=sys.stderr)
+                if attempt >= 2:
+                    print(f"Thread-{username}: All 3 2FA login attempts failed.", file=sys.stderr)
+                    return False, None, "TwoFactorAuthFailed"
+        return False, None, "TwoFactorAuthFailed"
     except instaloader.BadCredentialsException:
         print("Error: Invalid password.", file=sys.stderr)
         return False, None, "WrongPassword"

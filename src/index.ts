@@ -14,6 +14,11 @@ import {
   launchScraper,
 } from "./controllers/campaignController";
 
+// [-] TODO
+// - [O] fix updating the account activity (scraper script)
+// - [O] 2FA failure (login script)
+// - [ ] test scraping the followers
+
 const port = process.env.PORT ?? "3000";
 const domain = process.env.DOMAIN ?? "";
 

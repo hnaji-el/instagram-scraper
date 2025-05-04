@@ -207,7 +207,7 @@ def worker_scrape(account: Dict[str, Any], target: str, scrape_type: str, campai
     print(f"Thread-{thread_name}: Starting worker for account {account.get('username')} and target {target}")
 
     try:
-        max_retries = 3
+        max_retries = 5
         retry_count = 0
         needs_retry = True
 
@@ -231,10 +231,11 @@ def worker_scrape(account: Dict[str, Any], target: str, scrape_type: str, campai
                 print(f"Thread-{thread_name}: Attempting to get new account ({retry_count}/{max_retries}) for target {target}...")
                 new_account = fetch_logged_accounts(1)
                 if new_account:
-                    print(f"Thread-{thread_name}: Obtained new account: {new_account.get('username')}")
+                    print(f"Thread-{thread_name}: Obtained new account: {new_account[0].get('username')}")
+                    update_accounts_activity([new_account[0].get('id')], True)
                     update_accounts_activity([account.get('id')], False)
-                    account = new_account
-                    L = getInstaloaderInstanceWithProxyAndSession(new_account)
+                    account = new_account[0]
+                    L = getInstaloaderInstanceWithProxyAndSession(new_account[0])
                 else:
                     print(f"Thread-{thread_name}: Failed to obtain a new account. Stopping retries for target '{target}'.", file=sys.stderr)
                     break
