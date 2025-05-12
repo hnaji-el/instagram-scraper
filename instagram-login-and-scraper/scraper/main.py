@@ -122,8 +122,8 @@ def scrape_followers(L: instaloader.Instaloader,  account_info: Dict[str, Any], 
                     print(f"Thread-{thread_name}: Failed to send batch for {username_target}. Stopping scrape for this username.")
 
                 scraped_accounts = []
-            #     time.sleep(random.uniform(15, 30))
-            # time.sleep(random.uniform(0.5, 2.0))
+                time.sleep(random.uniform(15, 30))
+            time.sleep(random.uniform(0.5, 2.0))
 
         
         if scraped_accounts:  # Send remaining data
