@@ -7,7 +7,7 @@ import {
 } from "@prisma/client";
 import { spawn } from "child_process";
 import path from "path";
-import { createProxiesAndGetTheirIds } from "./proxyController";
+import { createProxiesAndGetTheirIds } from "./proxyController.js";
 
 const prisma = new PrismaClient();
 

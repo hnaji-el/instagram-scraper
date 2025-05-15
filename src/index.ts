@@ -7,17 +7,12 @@ import {
   launchLogin,
   updateAccount,
   updateAccountsActivity,
-} from "./controllers/accountControllers";
+} from "./controllers/accountControllers.js";
 import {
   createCampaign,
   getCampaign,
   launchScraper,
-} from "./controllers/campaignController";
-
-// [-] TODO
-// - [O] fix updating the account activity (scraper script)
-// - [O] 2FA failure (login script)
-// - [ ] test scraping the followers
+} from "./controllers/campaignController.js";
 
 const port = process.env.PORT ?? "3000";
 const domain = process.env.DOMAIN ?? "";

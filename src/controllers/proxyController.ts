@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient, ProxyStatus } from "@prisma/client";
-import { getProxyBaseUrlAndProxyPort } from "../utils/utils";
+import { getProxyBaseUrlAndProxyPort } from "../utils/utils.js";
 
 const prisma = new PrismaClient();
 
